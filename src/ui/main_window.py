@@ -3,7 +3,8 @@ main_window.py
 ================================================================================
 MainWindow: assembles every widget in ui/widgets/ into the application's
 single top-level window, wires signals to core modules, and manages project
-file persistence, undo/redo state, crash recovery, background flashing, and update checks.
+file persistence, undo/redo state, crash recovery, background flashing,
+timeline previews, and update checks.
 ================================================================================
 """
 
@@ -22,6 +23,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSplitter,
     QStatusBar,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
     QFileDialog,
@@ -47,6 +49,7 @@ from ui.widgets.board_panel import BoardPanel
 from ui.widgets.console_panel import ConsolePanel
 from ui.widgets.firmware_panel import FirmwarePanel
 from ui.widgets.relay_table import RelayTableWidget
+from ui.widgets.timeline_widget import TimelineWidget
 from ui.widgets.validation_panel import ValidationSummaryPanel
 
 logger = get_logger()
@@ -163,14 +166,21 @@ class MainWindow(QMainWindow):
 
         splitter = QSplitter(Qt.Vertical)
 
+        # Tabs for Relay Table & Timeline Preview
+        self.editor_tabs = QTabWidget()
         self.relay_table = RelayTableWidget()
-        splitter.addWidget(self.relay_table)
+        self.timeline_widget = TimelineWidget()
+
+        self.editor_tabs.addTab(self.relay_table, "Relay Schedule Table")
+        self.editor_tabs.addTab(self.timeline_widget, "Timeline Preview")
+
+        splitter.addWidget(self.editor_tabs)
 
         console_container = QWidget()
         console_layout = QVBoxLayout(console_container)
         console_layout.setContentsMargins(0, 0, 0, 0)
         console_header_row = QHBoxLayout()
-        console_header_row.addWidget(QLabel("Console"))
+        console_header_row.addWidget(QLabel("Console Log"))
         self.clear_console_button = QPushButton("Clear")
         console_header_row.addStretch(1)
         console_header_row.addWidget(self.clear_console_button)
@@ -205,7 +215,6 @@ class MainWindow(QMainWindow):
         self.firmware_panel.countdownChanged.connect(self._on_config_field_changed)
 
         self.relay_table.configChanged.connect(self._on_relay_updated)
-
         self.clear_console_button.clicked.connect(self.console_panel.clear_console)
 
     def _apply_initial_state(self) -> None:
@@ -265,7 +274,7 @@ class MainWindow(QMainWindow):
             self._update_undo_redo_actions()
             self._autosave_recovery()
 
-    def _autosave_recovery() -> None:
+    def _autosave_recovery(self) -> None:
         if self.configuration:
             try:
                 CRASH_RECOVERY_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -273,11 +282,11 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 logger.warning("Failed to write crash recovery file: %s", e)
 
-    def _update_undo_redo_actions() -> None:
+    def _update_undo_redo_actions(self) -> None:
         self.undo_action.setEnabled(len(self._undo_stack) > 0)
         self.redo_action.setEnabled(len(self._redo_stack) > 0)
 
-    def _sync_model_to_gui() -> None:
+    def _sync_model_to_gui(self) -> None:
         if not self.configuration:
             return
 
@@ -294,18 +303,19 @@ class MainWindow(QMainWindow):
         self.firmware_panel.set_active_low(self.configuration.relay_active_low)
 
         self.relay_table.load_channel_configs(self.configuration.relay_list)
+        self.timeline_widget.set_configuration(self.configuration)
 
         self._validate_configuration()
         self._update_status_bar()
 
-    def _mark_project_modified() -> None:
+    def _mark_project_modified(self) -> None:
         if not self.project_modified:
             self.project_modified = True
             logger.info("Project Modified")
         self._autosave_recovery()
         self._update_status_bar()
 
-    def _validate_configuration() -> None:
+    def _validate_configuration(self) -> None:
         if not self.configuration:
             return
 
@@ -503,6 +513,7 @@ class MainWindow(QMainWindow):
         self._save_undo_snapshot()
         self.configuration.loop_time = value
         self._mark_project_modified()
+        self.timeline_widget.set_configuration(self.configuration)
         self._validate_configuration()
 
     def _on_config_field_changed(self, *_args) -> None:
@@ -512,6 +523,7 @@ class MainWindow(QMainWindow):
         self.configuration.countdown_enable = self.firmware_panel.is_countdown_enabled()
         self.configuration.relay_active_low = self.firmware_panel.is_active_low()
         self._mark_project_modified()
+        self.timeline_widget.set_configuration(self.configuration)
         self._validate_configuration()
 
     def _on_relay_updated(self) -> None:
@@ -519,6 +531,7 @@ class MainWindow(QMainWindow):
         self._save_undo_snapshot()
         self.configuration.relay_list = self.relay_table.get_channel_configs()
         self._mark_project_modified()
+        self.timeline_widget.set_configuration(self.configuration)
         self._validate_configuration()
 
     def _on_refresh_requested(self) -> None:

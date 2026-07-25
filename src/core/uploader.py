@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import os
 import io
@@ -9,6 +11,7 @@ from pathlib import Path
 from enum import Enum, auto
 from typing import Callable, Optional, List
 from PySide6.QtCore import QObject, Signal, QThread
+
 
 
 class UploadWorkerThread(QThread):

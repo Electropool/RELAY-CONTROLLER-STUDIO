@@ -1,42 +1,27 @@
 """
 firmware_manager.py
 ================================================================================
-PHASE 1 PLACEHOLDER MODULE.
-
-Defines the architecture for two related-but-distinct responsibilities:
-
-  1. FirmwareCatalog  -- (REAL, implemented) discovers which firmware
-     builds physically exist under firmware/<BOARD>/<N>CH/ so the GUI's
-     board/firmware selectors always reflect what's actually on disk
-     rather than a hard-coded list that could drift out of sync.
-
-  2. FirmwareConfigurator -- (PLACEHOLDER, NOT implemented) will be
-     responsible for rewriting a given .ino file's "AUTO GENERATED
-     CONFIG" / "USER CONFIGURATION" block to match a FirmwareProfile
-     edited in the GUI, before that file is handed to an uploader.
-
-Per the project requirements for this phase, FirmwareConfigurator must
-NOT modify any firmware file yet -- only its class shape is defined here.
+Manages discovery of firmware templates on disk and non-destructive header
+constant rewriting/parsing for Arduino (.ino) sketches.
 ================================================================================
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import List
 
 from core.constants import BOARD_FIRMWARE_FOLDER, FIRMWARE_DIR, firmware_folder_name
 from core.logger import get_logger
-from core.models import RelayConfiguration
+from core.models import RelayConfiguration, RelayObject
 
 logger = get_logger()
 
 
 class FirmwareCatalog:
     """
-    Discovers available firmware builds on disk. This is a real (not
-    placeholder) implementation, since populating the GUI's dropdowns with
-    firmware that genuinely exists is needed even in Phase 1.
+    Discovers available firmware builds on disk.
     """
 
     def __init__(self, firmware_root: Path = FIRMWARE_DIR):
@@ -70,10 +55,7 @@ class FirmwareCatalog:
     def sketch_path(self, board: str, channel_count: int) -> Path:
         """
         Return the expected path to the .ino sketch for a given board and
-        channel count, e.g.
-        firmware/UNO/4CH/RelayController_4CH.ino
-
-        Does not guarantee the file exists -- callers should check.
+        channel count, e.g. firmware/UNO/4CH/RelayController_4CH.ino
         """
         board_folder = BOARD_FIRMWARE_FOLDER.get(board, "")
         folder = firmware_folder_name(channel_count)
@@ -83,9 +65,6 @@ class FirmwareCatalog:
     def sketch_exists(self, board: str, channel_count: int) -> bool:
         return self.sketch_path(board, channel_count).is_file()
 
-
-import re
-from core.models import RelayObject
 
 class FirmwareConfigurator:
     """
@@ -99,7 +78,7 @@ class FirmwareConfigurator:
     def apply_profile(self, profile: RelayConfiguration) -> bool:
         """
         Open the .ino file matching profile's board and channel count,
-        locate the configuration variables, and rewrite them.
+        locate the configuration variables, and rewrite them without modifying logic.
         """
         sketch_path = self._catalog.sketch_path(profile.board_type, profile.firmware_type)
         if not sketch_path.is_file():
@@ -120,7 +99,7 @@ class FirmwareConfigurator:
             active_low_str = "true" if profile.relay_active_low else "false"
             content = re.sub(
                 r"(bool\s+RELAY_ACTIVE_LOW\s*=\s*)(true|false)(\s*;)",
-                rf"\g<1>{active_low_str}\g<2>",
+                rf"\g<1>{active_low_str}\g<3>",
                 content
             )
 
@@ -135,7 +114,7 @@ class FirmwareConfigurator:
             countdown_str = "true" if profile.countdown_enable else "false"
             content = re.sub(
                 r"(bool\s+COUNTDOWN_DISPLAY_ENABLED\s*=\s*)(true|false)(\s*;)",
-                rf"\g<1>{countdown_str}\g<2>",
+                rf"\g<1>{countdown_str}\g<3>",
                 content
             )
 
@@ -143,7 +122,6 @@ class FirmwareConfigurator:
             start_times = ", ".join(str(r.start_time) for r in profile.relay_list)
             stop_times = ", ".join(str(r.stop_time) for r in profile.relay_list)
 
-            # Support both array representations: RelayPin[NUM_RELAYS] / RelayPins[NUM_RELAYS] or RelayStartTime[NUM_RELAYS]
             content = re.sub(
                 r"(unsigned\s+long\s+RelayStartTime\[[^\]]*\]\s*=\s*\{)[^\}]*(\};)",
                 rf"\g<1>{start_times}\g<2>",
@@ -200,7 +178,6 @@ class FirmwareConfigurator:
             for i in range(channel_count):
                 start = start_vals[i] if i < len(start_vals) else 0
                 stop = stop_vals[i] if i < len(stop_vals) else 0
-                # A channel is disabled if start == 0 and stop == 0
                 enabled = not (start == 0 and stop == 0)
                 relays.append(RelayObject(relay_number=i, enabled=enabled, start_time=start, stop_time=stop))
 
