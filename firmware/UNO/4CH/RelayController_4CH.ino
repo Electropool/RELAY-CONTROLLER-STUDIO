@@ -91,8 +91,8 @@ uint8_t RelayPin[NUM_RELAYS] = {4, 5, 6, 7};
 //   treated as DISABLED. It is fully ignored by the timing engine (never
 //   turned ON) and is exempt from the startup validation checks below. This
 //   lets you leave unused channels at 0/0 without editing any code.
-unsigned long RelayStartTime[NUM_RELAYS] = {0, 0, 8, 12};
-unsigned long RelayStopTime[NUM_RELAYS]  = {10, 20, 25, 18};
+unsigned long RelayStartTime[NUM_RELAYS] = {0, 0, 0, 0};
+unsigned long RelayStopTime[NUM_RELAYS]  = {0, 0, 0, 0};
 
 // ============================================================================
 //                      END OF USER CONFIGURATION SECTION

@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 from typing import Optional, List
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QKeySequence, QIcon
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -36,6 +36,7 @@ from core.constants import (
     STATUS_DETECTING,
     BOARD_ARDUINO,
     CRASH_RECOVERY_FILE,
+    ICONS_DIR,
 )
 from core.firmware_manager import FirmwareCatalog, FirmwareConfigurator
 from core.logger import get_logger
@@ -59,6 +60,11 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
+
+        # Set the window icon explicitly
+        icon_path = ICONS_DIR / "icon.png"
+        if icon_path.is_file():
+            self.setWindowIcon(QIcon(str(icon_path)))
 
         self.settings_manager = SettingsManager()
         self.board_detector = BoardDetector()
@@ -468,13 +474,18 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "User Manual", msg)
 
     def _on_about(self) -> None:
-        QMessageBox.about(
-            self,
-            f"About {APP_NAME}",
+        about = QMessageBox(self)
+        about.setWindowTitle(f"About {APP_NAME}")
+        about.setText(
             f"<b>{APP_NAME} v{APP_VERSION}</b><br><br>"
-            "An industrial relay timing configuration & hardware flashing tool.<br>"
+            "An industrial relay timing configuration &amp; hardware flashing tool.<br>"
             "Supports Arduino UNO, Nano, and ESP32 platforms with live validation and timing preview."
         )
+        icon_path = ICONS_DIR / "icon_64.png"
+        if icon_path.is_file():
+            from PySide6.QtGui import QPixmap
+            about.setIconPixmap(QPixmap(str(icon_path)))
+        about.exec()
 
     # Component slots
     def _on_board_changed(self, board: str) -> None:

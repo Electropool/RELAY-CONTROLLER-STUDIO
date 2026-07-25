@@ -38,6 +38,7 @@ else:
 
 FIRMWARE_DIR = PROJECT_ROOT / "firmware"
 ASSETS_DIR = PROJECT_ROOT / "assets"
+ICONS_DIR = ASSETS_DIR / "icons"
 CONFIG_DIR = PROJECT_ROOT / "config"
 LOGS_DIR = PROJECT_ROOT / "logs"
 DRIVERS_DIR = PROJECT_ROOT / "drivers"

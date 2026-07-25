@@ -6,3 +6,19 @@ build/dist/
 build/work/
 *.spec
 logs/*.log
+
+# Runtime-generated files (should not be committed)
+config/crash_recovery.json
+config/user_settings.json
+
+# Arduino CLI tools (downloaded at runtime by startup wizard)
+tools/Arduino/
+tools/Arduino15/
+tools/arduino-cli.exe
+tools/arduino-cli.yaml
+
+# IDE / OS artifacts
+.pytest_cache/
+.idea/
+.vscode/
+*.egg-info/

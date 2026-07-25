@@ -3,6 +3,7 @@ import threading
 import subprocess
 from pathlib import Path
 from PySide6.QtCore import Qt, Signal, QObject
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -14,7 +15,7 @@ from PySide6.QtWidgets import (
     QMessageBox
 )
 from core.logger import get_logger
-from core.constants import TOOLS_DIR, DRIVERS_DIR
+from core.constants import TOOLS_DIR, DRIVERS_DIR, ICONS_DIR
 from core.uploader import ensure_arduino_cli, write_arduino_cli_yaml
 
 logger = get_logger()
@@ -39,13 +40,17 @@ class StartupWizardDialog(QDialog):
         self.setModal(True)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
+        # Set dialog window icon
+        icon_path = ICONS_DIR / "icon.png"
+        if icon_path.is_file():
+            self.setWindowIcon(QIcon(str(icon_path)))
+
         self.signals = WizardSignals()
+        self._build_ui()
         self.signals.log.connect(self._on_log)
         self.signals.progress.connect(self.progress_bar.setValue)
         self.signals.item_status.connect(self._on_item_status)
         self.signals.finished.connect(self._on_finished)
-
-        self._build_ui()
         self.is_running = False
 
     def _build_ui(self) -> None:

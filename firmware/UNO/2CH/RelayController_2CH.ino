@@ -55,7 +55,7 @@ const uint8_t NUM_RELAYS = 2;
 // ---- Overall cycle length --------------------------------------------------
 // The countdown display counts down from this value to 0, then the whole
 // sequence (all relay timings) restarts from time 0 again.
-unsigned long TOTAL_TIME_SECONDS = 30;
+unsigned long TOTAL_TIME_SECONDS = 45;
 
 // ---- Relay electrical polarity ---------------------------------------------
 // Many low-cost optocoupler relay boards energize the relay when the input
@@ -92,7 +92,7 @@ uint8_t RelayPin[NUM_RELAYS] = {4, 5};
 //   turned ON) and is exempt from the startup validation checks below. This
 //   lets you leave unused channels at 0/0 without editing any code.
 unsigned long RelayStartTime[NUM_RELAYS] = {0, 0};
-unsigned long RelayStopTime[NUM_RELAYS]  = {10, 20};
+unsigned long RelayStopTime[NUM_RELAYS]  = {0, 0};
 
 // ============================================================================
 //                      END OF USER CONFIGURATION SECTION

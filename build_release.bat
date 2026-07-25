@@ -22,9 +22,11 @@ echo [build_release.bat] Building Release Executable (No Console)...
     --onefile ^
     --windowed ^
     --clean ^
+    --icon "assets\icons\icon.ico" ^
     --add-data "src;src" ^
     --add-data "firmware;firmware" ^
     --add-data "config;config" ^
+    --add-data "assets;assets" ^
     --add-data "docs;docs" ^
     --paths "src" ^
     --distpath "build\dist" ^

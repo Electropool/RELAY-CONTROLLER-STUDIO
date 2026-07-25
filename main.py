@@ -37,9 +37,10 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from PySide6.QtWidgets import QApplication  # noqa: E402  (after sys.path setup)
+from PySide6.QtGui import QIcon  # noqa: E402  (after sys.path setup)
+from PySide6.QtWidgets import QApplication, QDialog  # noqa: E402
 
-from core.constants import ASSETS_DIR, APP_NAME, APP_ORG  # noqa: E402
+from core.constants import ASSETS_DIR, ICONS_DIR, APP_NAME, APP_ORG  # noqa: E402
 from core.logger import get_logger  # noqa: E402
 
 
@@ -62,6 +63,13 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_ORG)
+
+    # Set the application-wide icon (window title bar, taskbar, Alt+Tab)
+    icon_path = ICONS_DIR / "icon.png"
+    if icon_path.is_file():
+        app.setWindowIcon(QIcon(str(icon_path)))
+    else:
+        logger.warning("Application icon not found at %s", icon_path)
 
     _load_stylesheet(app)
 
@@ -86,7 +94,6 @@ def main() -> int:
     # `python main.py` and a frozen PyInstaller build resolve `ui.*` the
     # same way.
     from ui.main_window import MainWindow  # noqa: E402
-    from PySide6.QtWidgets import QDialog  # noqa: E402
 
     window = MainWindow()
     window.show()

@@ -22,9 +22,11 @@ echo [build_debug.bat] Building Debug Executable (With Console Output)...
     --onefile ^
     --console ^
     --clean ^
+    --icon "assets\icons\icon.ico" ^
     --add-data "src;src" ^
     --add-data "firmware;firmware" ^
     --add-data "config;config" ^
+    --add-data "assets;assets" ^
     --add-data "docs;docs" ^
     --paths "src" ^
     --distpath "build\dist" ^

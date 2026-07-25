@@ -31,10 +31,12 @@ echo [build.bat] Building single-file executable...
     --name RelayControllerStudio ^
     --onefile ^
     --windowed ^
-    --icon "assets\icons\app_icon.ico" ^
-    --add-data "src\ui\resources;ui\resources" ^
+    --icon "assets\icons\icon.ico" ^
+    --add-data "src;src" ^
     --add-data "firmware;firmware" ^
     --add-data "config;config" ^
+    --add-data "assets;assets" ^
+    --add-data "docs;docs" ^
     --paths "src" ^
     --distpath "build\dist" ^
     --workpath "build\work" ^
