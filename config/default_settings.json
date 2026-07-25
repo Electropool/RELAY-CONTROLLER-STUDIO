@@ -1,0 +1,10 @@
+{
+    "theme": "dark",
+    "window_width": 1280,
+    "window_height": 800,
+    "remember_last_board": true,
+    "last_board": "",
+    "remember_last_port": true,
+    "last_com_port": "",
+    "auto_detect_on_launch": true
+}

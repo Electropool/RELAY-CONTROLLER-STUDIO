@@ -1,0 +1,140 @@
+/*
+================================================================================
+theme.qss - Default "dark" theme for Relay Controller Studio.
+
+Loaded by ui/main_window.py at startup. Kept as a separate .qss file
+(rather than inline Python strings) so a future settings-driven theme
+switcher can simply load a different file from assets/styles/ without any
+code changes.
+================================================================================
+*/
+
+QWidget {
+    background-color: #1e1f22;
+    color: #d4d4d4;
+    font-family: "Segoe UI", "Cantarell", sans-serif;
+    font-size: 13px;
+}
+
+QMainWindow {
+    background-color: #1e1f22;
+}
+
+QGroupBox {
+    border: 1px solid #3a3d41;
+    border-radius: 6px;
+    margin-top: 12px;
+    padding-top: 10px;
+    font-weight: 600;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+    color: #61afef;
+}
+
+QPushButton {
+    background-color: #2c2e33;
+    border: 1px solid #3a3d41;
+    border-radius: 4px;
+    padding: 6px 14px;
+}
+
+QPushButton:hover {
+    background-color: #3a3d41;
+    border-color: #61afef;
+}
+
+QPushButton:pressed {
+    background-color: #2c2e33;
+}
+
+QPushButton:disabled {
+    color: #6b6e72;
+    border-color: #2c2e33;
+}
+
+QPushButton#uploadButton {
+    background-color: #2f5233;
+    border-color: #4a7c4f;
+    font-weight: 600;
+}
+
+QPushButton#uploadButton:hover {
+    background-color: #386a3d;
+}
+
+QComboBox, QSpinBox {
+    background-color: #2c2e33;
+    border: 1px solid #3a3d41;
+    border-radius: 4px;
+    padding: 4px 6px;
+}
+
+QComboBox:hover, QSpinBox:hover {
+    border-color: #61afef;
+}
+
+QTableWidget {
+    background-color: #26282c;
+    gridline-color: #3a3d41;
+    border: 1px solid #3a3d41;
+    border-radius: 4px;
+    alternate-background-color: #2c2e33;
+}
+
+QHeaderView::section {
+    background-color: #2c2e33;
+    color: #d4d4d4;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #3a3d41;
+    font-weight: 600;
+}
+
+QPlainTextEdit#consolePanel {
+    background-color: #16171a;
+    border: 1px solid #3a3d41;
+    border-radius: 4px;
+    font-family: "Cascadia Code", "Consolas", monospace;
+    font-size: 12px;
+}
+
+QProgressBar {
+    background-color: #2c2e33;
+    border: 1px solid #3a3d41;
+    border-radius: 4px;
+    text-align: center;
+    color: #d4d4d4;
+}
+
+QProgressBar::chunk {
+    background-color: #61afef;
+    border-radius: 3px;
+}
+
+QStatusBar {
+    background-color: #16171a;
+    border-top: 1px solid #3a3d41;
+}
+
+QScrollBar:vertical {
+    background: #1e1f22;
+    width: 12px;
+}
+
+QScrollBar::handle:vertical {
+    background: #3a3d41;
+    border-radius: 6px;
+    min-height: 24px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #4a4d51;
+}
+
+QLabel#boardStatusLabel {
+    font-weight: 600;
+}
