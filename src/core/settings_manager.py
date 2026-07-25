@@ -39,6 +39,7 @@ class AppSettings:
     remember_last_port: bool = True
     last_com_port: str = ""
     auto_detect_on_launch: bool = True
+    first_startup_complete: bool = False
 
 
 class SettingsManager:

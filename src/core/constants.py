@@ -29,7 +29,13 @@ APP_ORG = "RelayControllerStudio"
 # app behaves the same whether run from source or from a frozen
 # PyInstaller executable).
 # ------------------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+import sys
+
+if getattr(sys, "frozen", False):
+    PROJECT_ROOT = Path(sys.executable).resolve().parent
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 FIRMWARE_DIR = PROJECT_ROOT / "firmware"
 ASSETS_DIR = PROJECT_ROOT / "assets"
 CONFIG_DIR = PROJECT_ROOT / "config"
@@ -39,7 +45,9 @@ TOOLS_DIR = PROJECT_ROOT / "tools"
 
 DEFAULT_SETTINGS_FILE = CONFIG_DIR / "default_settings.json"
 USER_SETTINGS_FILE = CONFIG_DIR / "user_settings.json"
+CRASH_RECOVERY_FILE = CONFIG_DIR / "crash_recovery.json"
 LOG_FILE = LOGS_DIR / "app.log"
+
 
 # ------------------------------------------------------------------------
 # Supported boards.

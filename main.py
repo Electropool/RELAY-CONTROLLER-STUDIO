@@ -65,10 +65,28 @@ def main() -> int:
 
     _load_stylesheet(app)
 
+    # Check if first startup has completed
+    from core.settings_manager import SettingsManager
+    settings_mgr = SettingsManager()
+    
+    # Check if tools are ready. If not completed, show setup wizard
+    if not settings_mgr.settings.first_startup_complete:
+        from ui.widgets.startup_wizard import StartupWizardDialog
+        wizard = StartupWizardDialog(settings_mgr)
+        # Apply stylesheet to wizard dialog
+        qss_path = Path(__file__).resolve().parent / "src" / "ui" / "resources" / "theme.qss"
+        if qss_path.is_file():
+            wizard.setStyleSheet(qss_path.read_text(encoding="utf-8"))
+        
+        if wizard.exec() != QDialog.DialogCode.Accepted:
+            logger.info("Setup wizard not completed. Exiting.")
+            return 0
+
     # Imported here (after sys.path setup) rather than at module top, so
     # `python main.py` and a frozen PyInstaller build resolve `ui.*` the
     # same way.
     from ui.main_window import MainWindow  # noqa: E402
+    from PySide6.QtWidgets import QDialog  # noqa: E402
 
     window = MainWindow()
     window.show()

@@ -1,58 +1,36 @@
 # Relay Controller Studio
 
-A desktop GUI application for configuring and uploading firmware to Arduino UNO/Nano and ESP32-based relay controller boards.
+A complete, standalone desktop application for configuring, validating, and flashing multi-channel relay timing systems for Arduino UNO/Nano and ESP32 hardware without needing Python or the Arduino IDE.
 
-Built with **Python 3.12+** and **PySide6 (Qt6)**.
+**GitHub Repository**: [https://github.com/Electropool/REALY-CONTROLER.git](https://github.com/Electropool/REALY-CONTROLER.git)
 
----
-
-## Features
-
-### Phase 1 — GUI Foundation
-- Board selection panel (Arduino UNO/Nano, ESP32)
-- Firmware selection by channel count (2, 4, 8, 16 relays)
-- Relay timing table with per-channel Start/Stop configuration
-- Firmware parameter controls (Loop Time, Active Low, Brightness, Countdown)
-- Internal console with live logging
-- Persistent user settings (window size, last board, auto-detect preference)
-- Dark themed Qt stylesheet
-
-### Phase 2.1 — GUI Configuration System
-- Working board selector with application state updates
-- Firmware type selector (channel count) dynamically populated per board
-- Loop Time, Active Low, Brightness, and Countdown controls wired to state
-- Relay table auto-populates rows based on selected channel count
-
-### Phase 2.2 — Validation Engine
-- Live validation on every parameter change (no Apply button needed)
-- Loop Time range check (1–9999 seconds)
-- Relay rules: Start ≤ Stop, Stop ≤ Loop Time, no negative values
-- Disabled relays (0/0) are skipped automatically
-- Visual feedback: red borders and tooltips on invalid fields
-- Validation summary panel with error count and itemized messages
-- Upload button disabled when validation fails
-
-### Phase 2.3 — Configuration Data Model
-- `RelayConfiguration` class as single source of truth
-- `RelayObject` per-channel data model
-- Automatic bidirectional sync between model and GUI
-- Project state tracking (Modified / Saved)
-- Default configuration generation per channel count
-- Console messages: Configuration Created, Configuration Updated, Relay Added/Removed, Project Modified
+Built with **Python 3.12+**, **PySide6 (Qt6)**, and **Arduino CLI**.
 
 ---
 
-## Upcoming Phases
+## Key Features
 
-> These are planned but **not yet implemented**:
+### 1. Hardware Integration & Flashing Layer
+- **Automatic Board & COM Port Detection**: Scans system serial ports to auto-identify Arduino UNO, Arduino Nano, and ESP32 microcontrollers.
+- **Embedded Portable Arduino CLI**: Bundled toolchain initialization with non-blocking compilation and flashing.
+- **In-Memory C++ Header Injection**: Dynamically updates configuration parameters directly inside target `.ino` sketches without altering firmware execution logic.
+- **Smart Bootloader Fallback**: Automatically retries Arduino Nano uploads across standard and old bootloader configurations.
+- **Non-Blocking Flashing**: Full multi-threaded compilation and flashing keep the Qt GUI 100% responsive.
 
-- JSON Save / Load
-- Firmware `.ino` file editing
-- Arduino CLI integration
-- Firmware upload (compile + flash)
-- Board auto-detection via COM ports
-- Timeline preview
-- Undo / Redo
+### 2. Complete Project System & Undo/Redo
+- **JSON Project Files**: Save (`Ctrl+S`), Save As (`Ctrl+Shift+S`), Open (`Ctrl+O`), and New (`Ctrl+N`) project files.
+- **Undo / Redo Engine**: Full history stack for reverting and re-applying timing edits (`Ctrl+Z` / `Ctrl+Y`).
+- **Automatic Crash Recovery**: Continuous session autosaving protects work against unexpected system crashes or loss of power.
+
+### 3. Live Validation & Real-time Console
+- **Real-Time Timing Validation**: Instant error checking for range constraints, start/stop order, and total loop duration.
+- **Interactive UI Feedback**: Red border error indicators on invalid cells with itemized validation panel summaries.
+- **Streaming Console Panel**: Real-time line-by-line compiler and flasher stdout logging attached directly to the application logger.
+
+### 4. Production Deployment & First Startup Wizard
+- **Zero Dependencies**: Standalone Windows executables (`Release` and `Debug` builds).
+- **First Startup Wizard**: Automatically initializes the portable Arduino CLI, core packages (`arduino:avr`, `esp32:esp32`), and required libraries (`TM1637`).
+- **Update Checker**: Automated background and manual release checks against the GitHub repository.
 
 ---
 
@@ -60,47 +38,47 @@ Built with **Python 3.12+** and **PySide6 (Qt6)**.
 
 ```
 Relay_Controller/
-├── main.py                  # Application entry point
-├── run.bat                  # Windows launcher (creates venv, installs deps, runs)
-├── build.bat                # PyInstaller packaging script
-├── requirements.txt         # Python dependencies
-├── .gitignore
+├── main.py                  # Application entry point & wizard bootstrap
+├── run.bat                  # Developer launcher script
+├── build_release.bat        # Windows release build (No console window)
+├── build_debug.bat          # Windows debug build (With console log output)
+├── build.bat                # Standard build script
+├── requirements.txt         # Dependencies (PySide6, pyserial, pyinstaller)
+├── README.md
+├── docs/
+│   └── UserManual.md        # Complete User Manual & Guide
 │
 ├── src/
-│   ├── core/                # Logic layer (no Qt dependency)
-│   │   ├── constants.py     # App-wide constants and paths
-│   │   ├── models.py        # RelayConfiguration, RelayObject, BoardInfo
-│   │   ├── validation_manager.py  # Input validation engine
-│   │   ├── firmware_manager.py    # Firmware catalog and configurator
-│   │   ├── board_detector.py      # Board detection (placeholder)
-│   │   ├── uploader.py            # Upload logic (placeholder)
-│   │   ├── settings_manager.py    # Persistent user settings
-│   │   └── logger.py              # Centralized logging
+│   ├── core/                # Core logic (Model-View architecture)
+│   │   ├── constants.py     # Global constants & path resolution
+│   │   ├── models.py        # RelayConfiguration & RelayObject models
+│   │   ├── validation_manager.py # Validation engine
+│   │   ├── firmware_manager.py   # Firmware catalog & C++ regex configurator
+│   │   ├── board_detector.py     # Auto COM port & board detection
+│   │   ├── uploader.py           # Portable Arduino CLI uploader & QThread worker
+│   │   ├── update_checker.py     # GitHub release checker
+│   │   ├── settings_manager.py   # Settings persistence
+│   │   └── logger.py             # App logger & Qt handlers
 │   │
-│   └── ui/                  # Presentation layer (PySide6 / Qt)
-│       ├── main_window.py   # Main application window
+│   └── ui/                  # PySide6 Presentation Layer
+│       ├── main_window.py   # Top-level window & menu bar
 │       ├── resources/
-│       │   └── theme.qss    # Dark theme stylesheet
+│       │   └── theme.qss    # Modern dark stylesheet
 │       └── widgets/
-│           ├── board_panel.py       # Board selection + status
-│           ├── firmware_panel.py    # Firmware config controls
-│           ├── relay_table.py       # Relay timing table
-│           ├── validation_panel.py  # Validation summary display
-│           └── console_panel.py     # Log output console
+│           ├── startup_wizard.py    # First Startup Wizard dialog
+│           ├── board_panel.py       # Board selection & status
+│           ├── firmware_panel.py    # Global configuration controls
+│           ├── relay_table.py       # Per-channel timing table
+│           ├── validation_panel.py  # Error summary panel
+│           └── console_panel.py     # Live log output panel
 │
-├── firmware/                # Arduino .ino source files
-│   ├── UNO/
-│   │   ├── 2CH/ 4CH/ 8CH/ 16CH/
-│   └── ESP32/
-│       ├── 2CH/ 4CH/ 8CH/ 16CH/
+├── firmware/                # C++ Arduino Sketch templates (.ino)
+│   ├── UNO/                 # 2CH, 4CH, 8CH, 16CH
+│   └── ESP32/               # 2CH, 4CH, 8CH, 16CH
 │
-├── config/
-│   └── default_settings.json
-├── assets/icons/
-├── drivers/
-├── tools/
-├── build/
-└── logs/
+├── config/                  # Settings & autosave recovery files
+├── tools/                   # Portable Arduino CLI & toolchain directory
+└── logs/                    # Runtime log files
 ```
 
 ---
@@ -109,45 +87,36 @@ Relay_Controller/
 
 ### Prerequisites
 
-- **Python 3.12+**
-- **Windows** (tested on Windows 10/11)
+- **Windows 10/11**
+- **Python 3.12+** (For running from source)
 
-### Run from Source
+### Running from Source
 
 ```bash
-# Option 1: Use the launcher script (recommended)
+# Option 1: Use the developer launcher
 run.bat
 
-# Option 2: Manual setup
+# Option 2: Manual command line
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python main.py
 ```
 
-### Build Windows Executable
+### Building Executables
 
 ```bash
-build.bat
-# Output: build\dist\RelayControllerStudio.exe
+# Build standalone Release executable (GUI only):
+build_release.bat
+# Output: build\dist\RelayControllerStudio_Release.exe
+
+# Build Debug executable (Console output enabled):
+build_debug.bat
+# Output: build\dist\RelayControllerStudio_Debug.exe
 ```
-
----
-
-## Architecture
-
-The application follows a strict **Model–View** separation:
-
-| Layer | Location | Responsibility |
-|-------|----------|----------------|
-| **Core** | `src/core/` | Data models, validation, business logic. Zero Qt dependency. |
-| **UI** | `src/ui/` | Qt widgets, layout, signal/slot wiring. No business logic. |
-| **Entry** | `main.py` | Bootstrap only: sys.path setup, QApplication, theme loading. |
-
-The `RelayConfiguration` dataclass is the **single source of truth**. The GUI reads from and writes to this model. Validation runs against the model, not the GUI widgets.
 
 ---
 
 ## License
 
-This project is currently private. All rights reserved.
+All rights reserved — [Electropool Repository](https://github.com/Electropool/REALY-CONTROLER.git).
