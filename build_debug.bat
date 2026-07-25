@@ -25,6 +25,7 @@ echo [build_debug.bat] Building Debug Executable (With Console Output)...
     --add-data "src;src" ^
     --add-data "firmware;firmware" ^
     --add-data "config;config" ^
+    --add-data "docs;docs" ^
     --paths "src" ^
     --distpath "build\dist" ^
     --workpath "build\work" ^
