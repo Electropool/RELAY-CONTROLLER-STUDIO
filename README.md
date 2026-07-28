@@ -1,20 +1,270 @@
 # Relay Controller Studio
 
-A complete, standalone desktop application for configuring, validating, and flashing multi-channel relay timing systems for Arduino UNO/Nano and ESP32 hardware without needing Python or the Arduino IDE.
+> A professional desktop application for configuring, validating, compiling, and flashing multi-channel relay controller firmware for Arduino UNO/Nano and ESP32 boards.
 
-**GitHub Repository**: [https://github.com/Electropool/REALY-CONTROLER.git](https://github.com/Electropool/REALY-CONTROLER.git)
-
-Built with **Python 3.12+**, **PySide6 (Qt6)**, and **Arduino CLI**.
+![Python](https://img.shields.io/badge/Python-3.12+-blue)
+![Qt](https://img.shields.io/badge/PySide6-Qt6-green)
+![Arduino](https://img.shields.io/badge/Arduino-CLI-orange)
+![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
 ---
 
-## Key Features
+## Overview
 
-### 1. Hardware Integration & Flashing Layer
-- **Automatic Board & COM Port Detection**: Scans system serial ports to auto-identify Arduino UNO, Arduino Nano, and ESP32 microcontrollers.
-- **Embedded Portable Arduino CLI**: Bundled toolchain initialization with non-blocking compilation and flashing.
-- **In-Memory C++ Header Injection**: Dynamically updates configuration parameters directly inside target `.ino` sketches without altering firmware execution logic.
-- **Smart Bootloader Fallback**: Automatically retries Arduino Nano uploads across standard and old bootloader configurations.
+Relay Controller Studio is a complete Windows desktop application that enables users to design complex relay timing sequences without writing Arduino code.
+
+The software automatically validates configurations, generates firmware with user-defined settings, and uploads it directly to supported microcontrollers through an intuitive graphical interface.
+
+The application is designed for engineers, automation developers, students, industrial control systems, exhibitions, lighting installations, and custom relay-based automation projects.
+
+---
+
+# Features
+
+## Modern Desktop Interface
+
+- Professional Qt-based user interface
+- Real-time configuration editing
+- Interactive relay event editor
+- Timeline visualization
+- Live validation feedback
+- Project save/load support
+- Automatic startup wizard
+
+---
+
+## Supported Hardware
+
+### Arduino
+
+- Arduino UNO
+- Arduino Nano
+
+### ESP32
+
+- ESP32 Dev Module
+
+Supported relay variants
+
+- 2 Channel
+- 4 Channel
+- 8 Channel
+- 16 Channel
+
+---
+
+## Relay Configuration
+
+Configure every relay independently.
+
+Supports
+
+- Multiple ON/OFF events per relay
+- Individual event scheduling
+- Oscillation mode
+- Adjustable oscillation period
+- Disabled events
+- Active High / Active Low relays
+
+---
+
+## Countdown Display
+
+Supports TM1637 4-digit displays.
+
+Features include
+
+- Countdown timer
+- Adjustable brightness
+- Enable / Disable display
+- Error indication
+
+---
+
+## Timeline Editor
+
+Interactive timeline showing
+
+- Relay activation windows
+- Event ordering
+- Overlapping detection
+- Loop duration
+
+---
+
+## Automatic Validation
+
+The software validates every configuration before upload.
+
+Checks include
+
+- Invalid event ranges
+- Event overlap
+- Start < Stop
+- Loop duration limits
+- Oscillation validation
+- Missing configuration
+- Invalid relay timings
+
+---
+
+## Upload System
+
+Integrated upload pipeline.
+
+Features
+
+- Automatic board detection
+- Automatic COM port detection
+- Firmware generation
+- Arduino CLI integration
+- Progress reporting
+- Upload logs
+- Error handling
+
+---
+
+## Project Management
+
+Projects can be saved and reopened at any time.
+
+Includes
+
+- JSON project format
+- Automatic recovery
+- Recent projects
+- Import / Export
+
+---
+
+# Firmware Features
+
+The generated firmware includes
+
+- Millisecond timing engine
+- Multiple relay events
+- Oscillation support
+- Active Low / High support
+- TM1637 countdown display
+- Runtime validation
+- Error protection
+
+---
+
+# Technology Stack
+
+Desktop
+
+- Python 3.12+
+- PySide6 (Qt6)
+
+Embedded
+
+- Arduino Framework
+- ESP32 Arduino Core
+
+Tools
+
+- Arduino CLI
+- avrdude
+- esptool
+
+---
+
+# Project Structure
+
+```
+Relay_Controller_Studio/
+│
+├── firmware/
+├── src/
+│   ├── core/
+│   ├── ui/
+│   ├── resources/
+│   └── widgets/
+│
+├── assets/
+├── config/
+├── tests/
+├── tools/
+├── build/
+└── docs/
+```
+
+---
+
+# Installation
+
+Clone the repository
+
+```bash
+git clone https://github.com/Electropool/REALY-CONTROLER.git
+```
+
+Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+Launch the application
+
+```bash
+python main.py
+```
+
+---
+
+# Screenshots
+
+> Screenshots will be added soon.
+
+---
+
+# Roadmap
+
+- Binary firmware distribution (.HEX / .BIN)
+- Firmware patching without source distribution
+- Additional microcontroller support
+- More relay board variants
+- Custom firmware templates
+- Automatic update system
+
+---
+
+# Contributing
+
+Contributions, suggestions, feature requests, and bug reports are welcome.
+
+Please open an Issue or submit a Pull Request.
+
+---
+
+# License
+
+This project is licensed under the MIT License.
+
+---
+
+# Author
+
+**Arpan Kar**
+
+Electronics & Embedded Systems Developer
+
+GitHub:
+https://github.com/Electropool
+
+Website:
+https://electropool.online
+
+LinkedIn:
+https://www.linkedin.com/in/arpan-kar-1806a628b/
+
+---
+
+If you find this project useful, consider giving it a ⭐ on GitHub.- **Smart Bootloader Fallback**: Automatically retries Arduino Nano uploads across standard and old bootloader configurations.
 - **Non-Blocking Flashing**: Full multi-threaded compilation and flashing keep the Qt GUI 100% responsive.
 
 ### 2. Complete Project System & Undo/Redo
@@ -119,4 +369,4 @@ build_debug.bat
 
 ## License
 
-All rights reserved — [Electropool Repository](https://github.com/Electropool/REALY-CONTROLER.git).
+All rights reserved — [Electropool Repository](https://github.com/Electropool/RELAY-CONTROLLER-STUDIO.git).
