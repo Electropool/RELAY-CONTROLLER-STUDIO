@@ -264,7 +264,14 @@ class BaseUploader:
 
     def compile_sketch(self, fqbn: str, sketch_path: Path) -> bool:
         self._set_stage(UploadStage.COMPILING, f"Compiling sketch for {fqbn}...")
-        compile_args = self.get_cli_args("compile") + ["--fqbn", fqbn, str(sketch_path)]
+        sketch_dir = sketch_path.parent
+        compile_args = self.get_cli_args("compile") + ["--fqbn", fqbn, str(sketch_dir)]
+        
+        logger.info("--- Compile Step ---")
+        logger.info("Sketch Folder: %s", sketch_dir)
+        logger.info("Sketch File: %s", sketch_path)
+        logger.info("Compile Command: %s", " ".join(compile_args))
+        
         return self.run_process(compile_args, "Compiling")
 
     def upload_sketch(self, fqbn: str, sketch_path: Path) -> bool:
@@ -285,7 +292,14 @@ class BaseUploader:
                 logger.error("Upload Error: Cannot open port %s (%s)", self.com_port, se)
             return False
 
-        upload_args = self.get_cli_args("upload") + ["-p", self.com_port, "--fqbn", fqbn, str(sketch_path)]
+        sketch_dir = sketch_path.parent
+        upload_args = self.get_cli_args("upload") + ["-p", self.com_port, "--fqbn", fqbn, str(sketch_dir)]
+        
+        logger.info("--- Upload Step ---")
+        logger.info("Sketch Folder: %s", sketch_dir)
+        logger.info("Sketch File: %s", sketch_path)
+        logger.info("Upload Command: %s", " ".join(upload_args))
+        
         return self.run_process(upload_args, "Uploading")
 
     def run(self) -> bool:
@@ -305,6 +319,12 @@ class ArduinoUploader(BaseUploader):
 
         from core.firmware_manager import FirmwareCatalog
         catalog = FirmwareCatalog()
+        if not catalog.sketch_exists(self.profile.board_type, self.profile.firmware_type):
+            err_msg = f"Firmware template not found for {self.profile.board_type} {self.profile.firmware_type}CH"
+            self._set_stage(UploadStage.FAILED, err_msg)
+            logger.error("Sketch file not found at expected path: %s", catalog.sketch_path(self.profile.board_type, self.profile.firmware_type))
+            return False
+
         sketch_path = catalog.sketch_path(self.profile.board_type, self.profile.firmware_type)
 
         # Build configurations inside sketch
@@ -358,6 +378,12 @@ class ESP32Uploader(BaseUploader):
 
         from core.firmware_manager import FirmwareCatalog
         catalog = FirmwareCatalog()
+        if not catalog.sketch_exists(self.profile.board_type, self.profile.firmware_type):
+            err_msg = f"Firmware template not found for {self.profile.board_type} {self.profile.firmware_type}CH"
+            self._set_stage(UploadStage.FAILED, err_msg)
+            logger.error("Sketch file not found at expected path: %s", catalog.sketch_path(self.profile.board_type, self.profile.firmware_type))
+            return False
+
         sketch_path = catalog.sketch_path(self.profile.board_type, self.profile.firmware_type)
 
         # Build configurations inside sketch

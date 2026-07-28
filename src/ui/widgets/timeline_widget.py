@@ -89,9 +89,10 @@ class TimelineWidget(QWidget):
             y_center = top_margin + (idx + 0.5) * row_h
             bar_y = y_center - bar_h / 2
 
-            # Channel Label
-            painter.setPen(QPen(QColor("#61afef") if r.enabled else QColor("#5c6370")))
-            lbl_font = QFont("Segoe UI", 9, QFont.Bold if r.enabled else QFont.Normal)
+            # Channel Label (enabled if any event is enabled)
+            relay_enabled = any(e.enabled for e in r.events)
+            painter.setPen(QPen(QColor("#61afef") if relay_enabled else QColor("#5c6370")))
+            lbl_font = QFont("Segoe UI", 9, QFont.Bold if relay_enabled else QFont.Normal)
             painter.setFont(lbl_font)
             painter.drawText(
                 QRectF(5, bar_y, left_margin - 12, bar_h),
@@ -105,9 +106,13 @@ class TimelineWidget(QWidget):
             painter.setPen(QPen(QColor("#2c313a"), 1))
             painter.drawRoundedRect(track_rect, 3, 3)
 
-            is_disabled = (not r.enabled) or (r.start_time == 0 and r.stop_time == 0)
+            # Gather active/valid events
+            active_events = [
+                e for e in r.events
+                if e.enabled and not (e.start_time == 0 and e.stop_time == 0)
+            ]
 
-            if is_disabled:
+            if not active_events:
                 # Greyed out bar
                 painter.setBrush(QColor("#21252b"))
                 painter.setPen(QPen(QColor("#3a3d41"), 1))
@@ -118,29 +123,36 @@ class TimelineWidget(QWidget):
                 painter.setFont(small_font)
                 painter.drawText(track_rect, Qt.AlignCenter, "OFF / Disabled")
             else:
-                # Active timing bar
-                start_x = left_margin + (min(r.start_time, loop_time) / loop_time) * timeline_w
-                stop_x = left_margin + (min(r.stop_time, loop_time) / loop_time) * timeline_w
-                bar_w = max(2.0, stop_x - start_x)
+                for e in active_events:
+                    start_x = left_margin + (min(e.start_time, loop_time) / loop_time) * timeline_w
+                    stop_x = left_margin + (min(e.stop_time, loop_time) / loop_time) * timeline_w
+                    bar_w = max(2.0, stop_x - start_x)
 
-                active_rect = QRectF(start_x, bar_y, bar_w, bar_h)
+                    active_rect = QRectF(start_x, bar_y, bar_w, bar_h)
 
-                # Gradient fill
-                grad = QLinearGradient(active_rect.topLeft(), active_rect.topRight())
-                grad.setColorAt(0.0, QColor("#98c379"))  # Soft green
-                grad.setColorAt(1.0, QColor("#61afef"))  # Soft blue
+                    # Gradient fill: orange/yellow for oscillation, green/blue for normal
+                    grad = QLinearGradient(active_rect.topLeft(), active_rect.topRight())
+                    if e.oscillate:
+                        grad.setColorAt(0.0, QColor("#e5c07b"))
+                        grad.setColorAt(1.0, QColor("#d19a66"))
+                    else:
+                        grad.setColorAt(0.0, QColor("#98c379"))
+                        grad.setColorAt(1.0, QColor("#61afef"))
 
-                painter.setBrush(grad)
-                painter.setPen(QPen(QColor("#98c379"), 1))
-                painter.drawRoundedRect(active_rect, 3, 3)
+                    painter.setBrush(grad)
+                    painter.setPen(QPen(QColor("#e5c07b") if e.oscillate else QColor("#98c379"), 1))
+                    painter.drawRoundedRect(active_rect, 3, 3)
 
-                # Time duration text inside active bar
-                if bar_w > 45:
-                    painter.setPen(QPen(QColor("#1e2024")))
-                    val_font = QFont("Consolas", 8, QFont.Bold)
-                    painter.setFont(val_font)
-                    painter.drawText(
-                        active_rect,
-                        Qt.AlignCenter,
-                        f"{r.start_time}s - {r.stop_time}s",
-                    )
+                    # Time duration text inside active bar
+                    if bar_w > 45:
+                        painter.setPen(QPen(QColor("#1e2024")))
+                        val_font = QFont("Consolas", 8, QFont.Bold)
+                        painter.setFont(val_font)
+                        lbl_text = f"{e.start_time}s - {e.stop_time}s"
+                        if e.oscillate:
+                            lbl_text += " (Osc)"
+                        painter.drawText(
+                            active_rect,
+                            Qt.AlignCenter,
+                            lbl_text,
+                        )

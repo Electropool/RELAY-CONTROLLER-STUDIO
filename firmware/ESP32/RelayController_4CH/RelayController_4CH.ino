@@ -1,6 +1,6 @@
 /*
   ============================================================================
-  RelayController_2CH
+  RelayController_4CH
   ----------------------------------------------------------------------------
   Timed Relay Sequencer for Animated Sculptures / Theme Installations
   (including Durga Puja theme installations, exhibition electronics, and
@@ -8,7 +8,7 @@
 
   Board:    ESP32 DevKit V1 (ESP32-WROOM-32)
   Display:  TM1637 4-Digit 7-Segment Display (countdown timer)
-  Outputs:  2 channel(s) of optocoupler relay modules, wired
+  Outputs:  4 channel(s) of optocoupler relay modules, wired
             DIRECTLY to ESP32 GPIOs -- no GPIO expander IC of any kind
             (no PCF8574, no MCP23017, nothing beyond the ESP32 itself).
   ----------------------------------------------------------------------------
@@ -76,7 +76,7 @@
 
 // ---- Number of relay channels on this build --------------------------------
 // Must match the number of entries in every array below.
-const uint8_t NUM_RELAYS = 2;
+const uint8_t NUM_RELAYS = 4;
 
 // ---- Overall cycle length ---------------------------------------------------
 // The countdown display counts down from this value to 0, then the whole
@@ -105,20 +105,24 @@ bool COUNTDOWN_DISPLAY_ENABLED = true;
 
 // ---- Relay output pins (safe GPIOs only -- see README for the full table) --
 // One digital pin per relay channel. Index 0 corresponds to Relay 1, etc.
-uint8_t RelayPins[NUM_RELAYS] = {4, 13};
+uint8_t RelayPins[NUM_RELAYS] = {4, 13, 14, 16};
 
-// ---- Relay ON/OFF timing (in whole seconds from the start of the cycle) ----
-// RelayStartTime[i] / RelayStopTime[i] define the window during which relay
-// (i+1) is energized. A relay is ON whenever:
-//     RelayStartTime[i] <= secondsElapsed < RelayStopTime[i]
-//
-// SPECIAL CASE - Disabling a channel:
-//   If RelayStartTime[i] == 0 AND RelayStopTime[i] == 0, that relay is
-//   treated as UNUSED / DISABLED. It is fully ignored by the timing engine
-//   (never turned ON), and it is completely exempt from the startup
-//   validation checks below -- it can never trigger an "Err".
-unsigned long RelayStartTime[NUM_RELAYS] = {0, 0};
-unsigned long RelayStopTime[NUM_RELAYS]  = {10, 20};
+// ---- Relay Events (Multiple Start/Stop timings with optional Oscillation) ----
+struct RelayEvent {
+  unsigned long startTime;
+  unsigned long stopTime;
+  bool oscillate;
+  unsigned long oscPeriodMs;
+};
+
+const uint8_t MAX_EVENTS_PER_RELAY = 1;
+
+RelayEvent relayEvents[NUM_RELAYS][MAX_EVENTS_PER_RELAY] = {
+  { {0, 0, false, 1000} },
+  { {0, 0, false, 1000} },
+  { {0, 0, false, 1000} },
+  { {0, 0, false, 1000} }
+};
 
 // ===== AUTO GENERATED CONFIG END =====
 
@@ -140,8 +144,13 @@ unsigned long lastDisplayedSecond = 0xFFFFFFFF;  // forces first display refresh
 // start and stop times are exactly 0. Disabled relays are ignored entirely
 // by the timing engine and are skipped during validation.
 // ============================================================================
-bool relayIsDisabled(uint8_t index) {
-  return (RelayStartTime[index] == 0 && RelayStopTime[index] == 0);
+bool bool relayIsDisabled(uint8_t index) {
+  for (uint8_t e = 0; e < MAX_EVENTS_PER_RELAY; e++) {
+    if (relayEvents[index][e].startTime != 0 || relayEvents[index][e].stopTime != 0) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // ============================================================================
@@ -199,20 +208,39 @@ void showError() {
 // Disabled relays (Start == 0 and Stop == 0) are skipped entirely and never
 // cause a validation failure.
 // ============================================================================
-void validateConfiguration() {
+void void validateConfiguration() {
   if (TOTAL_TIME_SECONDS < 1) {
     showError();
   }
 
   for (uint8_t i = 0; i < NUM_RELAYS; i++) {
     if (relayIsDisabled(i)) {
-      continue;  // Disabled channels are exempt from validation.
+      continue;
     }
-    if (RelayStartTime[i] > RelayStopTime[i]) {
-      showError();
-    }
-    if (RelayStopTime[i] > TOTAL_TIME_SECONDS) {
-      showError();
+    unsigned long lastStop = 0;
+    for (uint8_t e = 0; e < MAX_EVENTS_PER_RELAY; e++) {
+      unsigned long start = relayEvents[i][e].startTime;
+      unsigned long stop = relayEvents[i][e].stopTime;
+      if (start == 0 && stop == 0) {
+        continue;
+      }
+      if (start > stop) {
+        showError();
+      }
+      if (stop > TOTAL_TIME_SECONDS) {
+        showError();
+      }
+      if (start < lastStop) {
+        showError();
+      }
+      if (relayEvents[i][e].oscillate) {
+        unsigned long oscPeriod = relayEvents[i][e].oscPeriodMs;
+        unsigned long durationMs = (stop - start) * 1000UL;
+        if (oscPeriod < 10 || oscPeriod > durationMs) {
+          showError();
+        }
+      }
+      lastStop = stop;
     }
   }
 }
@@ -223,12 +251,26 @@ void validateConfiguration() {
 // based purely on how many seconds have elapsed since the cycle began.
 // Disabled channels always return false.
 // ============================================================================
-bool shouldRelayBeOn(uint8_t index, unsigned long secondsElapsed) {
-  if (relayIsDisabled(index)) {
-    return false;
+bool bool shouldRelayBeOn(uint8_t index, unsigned long secondsElapsed) {
+  for (uint8_t e = 0; e < MAX_EVENTS_PER_RELAY; e++) {
+    unsigned long start = relayEvents[index][e].startTime;
+    unsigned long stop = relayEvents[index][e].stopTime;
+    if (start == 0 && stop == 0) {
+      continue;
+    }
+    if (secondsElapsed >= start && secondsElapsed < stop) {
+      if (relayEvents[index][e].oscillate) {
+        unsigned long currentMs = millis();
+        unsigned long eventStartMs = cycleStartMillis + (start * 1000UL);
+        unsigned long elapsedInEventMs = currentMs - eventStartMs;
+        unsigned long period = relayEvents[index][e].oscPeriodMs;
+        if (period < 10) period = 10;
+        return (elapsedInEventMs / period) % 2 == 0;
+      }
+      return true;
+    }
   }
-  return (secondsElapsed >= RelayStartTime[index]) &&
-         (secondsElapsed <  RelayStopTime[index]);
+  return false;
 }
 
 // ============================================================================

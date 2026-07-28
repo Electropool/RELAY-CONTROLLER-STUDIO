@@ -84,7 +84,7 @@ CHANNEL_COUNTS = [2, 4, 8, 16]
 # Folder naming convention used under firmware/<BOARD>/<N>CH/
 def firmware_folder_name(channel_count: int) -> str:
     """Return the firmware sub-folder name for a given channel count."""
-    return f"{channel_count}CH"
+    return f"RelayController_{channel_count}CH"
 
 
 # ------------------------------------------------------------------------

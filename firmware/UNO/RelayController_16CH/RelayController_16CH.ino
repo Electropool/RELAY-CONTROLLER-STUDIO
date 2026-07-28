@@ -81,18 +81,34 @@ bool COUNTDOWN_DISPLAY_ENABLED = true;
 // One digital pin per relay channel. Index 0 corresponds to Relay 1, etc.
 uint8_t RelayPin[NUM_RELAYS] = {4, 5, 6, 7, 8, 9, 10, 11, 12, 13, A0, A1, A2, A3, A4, A5};
 
-// ---- Relay ON/OFF timing (in whole seconds from the start of the cycle) ----
-// RelayStartTime[i] / RelayStopTime[i] define the window during which relay
-// (i+1) is energized. A relay is ON whenever:
-//     RelayStartTime[i] <= secondsElapsed < RelayStopTime[i]
-//
-// SPECIAL CASE - Disabling a channel:
-//   If RelayStartTime[i] == 0 AND RelayStopTime[i] == 0, that relay is
-//   treated as DISABLED. It is fully ignored by the timing engine (never
-//   turned ON) and is exempt from the startup validation checks below. This
-//   lets you leave unused channels at 0/0 without editing any code.
-unsigned long RelayStartTime[NUM_RELAYS] = {0, 0, 8, 12, 0, 15, 20, 0, 5, 10, 0, 25, 30, 0, 0, 40};
-unsigned long RelayStopTime[NUM_RELAYS]  = {10, 20, 25, 18, 0, 35, 40, 0, 15, 30, 0, 45, 55, 0, 0, 60};
+// ---- Relay Events (Multiple Start/Stop timings with optional Oscillation) ----
+struct RelayEvent {
+  unsigned long startTime;
+  unsigned long stopTime;
+  bool oscillate;
+  unsigned long oscPeriodMs;
+};
+
+const uint8_t MAX_EVENTS_PER_RELAY = 3;
+
+RelayEvent relayEvents[NUM_RELAYS][MAX_EVENTS_PER_RELAY] = {
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} },
+  { {0, 0, false, 1000}, {0, 0, false, 1000}, {0, 0, false, 1000} }
+};
 
 // ============================================================================
 //                      END OF USER CONFIGURATION SECTION
@@ -114,7 +130,12 @@ unsigned long lastDisplayedSecond = 0xFFFFFFFF; // forces first display refresh
 // by the timing engine and are skipped during validation.
 // ============================================================================
 bool relayIsDisabled(uint8_t index) {
-  return (RelayStartTime[index] == 0 && RelayStopTime[index] == 0);
+  for (uint8_t e = 0; e < MAX_EVENTS_PER_RELAY; e++) {
+    if (relayEvents[index][e].startTime != 0 || relayEvents[index][e].stopTime != 0) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // ============================================================================
@@ -177,13 +198,32 @@ void validateConfiguration() {
 
   for (uint8_t i = 0; i < NUM_RELAYS; i++) {
     if (relayIsDisabled(i)) {
-      continue; // Disabled channels are exempt from validation.
+      continue;
     }
-    if (RelayStartTime[i] > RelayStopTime[i]) {
-      showError();
-    }
-    if (RelayStopTime[i] > TOTAL_TIME_SECONDS) {
-      showError();
+    unsigned long lastStop = 0;
+    for (uint8_t e = 0; e < MAX_EVENTS_PER_RELAY; e++) {
+      unsigned long start = relayEvents[i][e].startTime;
+      unsigned long stop = relayEvents[i][e].stopTime;
+      if (start == 0 && stop == 0) {
+        continue;
+      }
+      if (start > stop) {
+        showError();
+      }
+      if (stop > TOTAL_TIME_SECONDS) {
+        showError();
+      }
+      if (start < lastStop) {
+        showError();
+      }
+      if (relayEvents[i][e].oscillate) {
+        unsigned long oscPeriod = relayEvents[i][e].oscPeriodMs;
+        unsigned long durationMs = (stop - start) * 1000UL;
+        if (oscPeriod < 10 || oscPeriod > durationMs) {
+          showError();
+        }
+      }
+      lastStop = stop;
     }
   }
 }
@@ -195,11 +235,25 @@ void validateConfiguration() {
 // Disabled channels always return false.
 // ============================================================================
 bool shouldRelayBeOn(uint8_t index, unsigned long secondsElapsed) {
-  if (relayIsDisabled(index)) {
-    return false;
+  for (uint8_t e = 0; e < MAX_EVENTS_PER_RELAY; e++) {
+    unsigned long start = relayEvents[index][e].startTime;
+    unsigned long stop = relayEvents[index][e].stopTime;
+    if (start == 0 && stop == 0) {
+      continue;
+    }
+    if (secondsElapsed >= start && secondsElapsed < stop) {
+      if (relayEvents[index][e].oscillate) {
+        unsigned long currentMs = millis();
+        unsigned long eventStartMs = cycleStartMillis + (start * 1000UL);
+        unsigned long elapsedInEventMs = currentMs - eventStartMs;
+        unsigned long period = relayEvents[index][e].oscPeriodMs;
+        if (period < 10) period = 10;
+        return (elapsedInEventMs / period) % 2 == 0;
+      }
+      return true;
+    }
   }
-  return (secondsElapsed >= RelayStartTime[index]) &&
-         (secondsElapsed <  RelayStopTime[index]);
+  return false;
 }
 
 // ============================================================================

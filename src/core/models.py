@@ -22,43 +22,129 @@ import json
 
 
 @dataclass
+class RelayEvent:
+    """
+    Configuration for a single timing event on a relay channel.
+    """
+    start_time: int = 0
+    stop_time: int = 0
+    enabled: bool = True
+    oscillate: bool = False
+    osc_period_ms: int = 1000
+
+    def to_dict(self) -> dict:
+        return {
+            "start_time": self.start_time,
+            "stop_time": self.stop_time,
+            "enabled": self.enabled,
+            "oscillate": self.oscillate,
+            "osc_period_ms": self.osc_period_ms,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> RelayEvent:
+        return cls(
+            start_time=data.get("start_time", 0),
+            stop_time=data.get("stop_time", 0),
+            enabled=data.get("enabled", True),
+            oscillate=data.get("oscillate", False),
+            osc_period_ms=data.get("osc_period_ms", 1000),
+        )
+
+
+@dataclass(init=False)
 class RelayObject:
     """
     Configuration for a single relay channel.
-
-    Attributes:
-        relay_number: Zero-based channel index (0 == "Relay1").
-        enabled: Is the relay enabled.
-        start_time: Seconds from the start of the cycle.
-        stop_time: Seconds from the start of the cycle.
+    Backward compatible API supports legacy fields `enabled`, `start_time`, `stop_time`.
+    Internally stores a list of ``RelayEvent`` objects.
     """
 
     relay_number: int
-    enabled: bool = True
-    start_time: int = 0
-    stop_time: int = 0
+    events: List[RelayEvent] = field(default_factory=list)
+
+    def __init__(self, relay_number: int, enabled: bool = True, start_time: int = 0, stop_time: int = 0,
+                 events: List[RelayEvent] = None, **kwargs):
+        """Create a RelayObject.
+        Supports the old signature (enabled, start_time, stop_time) and the newer ``events`` list.
+        Extra kwargs are ignored for forward compatibility.
+        """
+        self.relay_number = relay_number
+        if events is not None:
+            self.events = events
+        else:
+            self.events = [RelayEvent(start_time=start_time, stop_time=stop_time, enabled=enabled)]
+        # ignore any extra kwargs
+
+    @property
+    def enabled(self) -> bool:
+        """True if any event is enabled (legacy: based on first event)."""
+        return any(e.enabled for e in self.events) if self.events else False
+
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        if not self.events:
+            self.events.append(RelayEvent())
+        for e in self.events:
+            e.enabled = value
+        if not value and self.events:
+            # When disabling, clear times of the first event for legacy behaviour
+            self.events[0].start_time = 0
+            self.events[0].stop_time = 0
+
+    @property
+    def start_time(self) -> int:
+        """Legacy accessor for the start time of the first event."""
+        return self.events[0].start_time if self.events else 0
+
+    @start_time.setter
+    def start_time(self, value: int) -> None:
+        if not self.events:
+            self.events.append(RelayEvent())
+        self.events[0].start_time = value
+        # Update enabled flag based on zero values
+        self.events[0].enabled = not (self.events[0].start_time == 0 and self.events[0].stop_time == 0)
+
+    @property
+    def stop_time(self) -> int:
+        """Legacy accessor for the stop time of the first event."""
+        return self.events[0].stop_time if self.events else 0
+
+    @stop_time.setter
+    def stop_time(self, value: int) -> None:
+        if not self.events:
+            self.events.append(RelayEvent())
+        self.events[0].stop_time = value
+        self.events[0].enabled = not (self.events[0].start_time == 0 and self.events[0].stop_time == 0)
 
     @property
     def display_name(self) -> str:
-        """Human-readable channel label, e.g. 'Relay1'."""
+        """Human‑readable channel label, e.g. 'Relay1'."""
         return f"Relay{self.relay_number + 1}"
 
     def to_dict(self) -> dict:
         return {
             "relay_number": self.relay_number,
-            "enabled": self.enabled,
-            "start_time": self.start_time,
-            "stop_time": self.stop_time,
+            "events": [e.to_dict() for e in self.events],
+            "enabled": self.events[0].enabled if self.events else True,
+            "start_time": self.events[0].start_time if self.events else 0,
+            "stop_time": self.events[0].stop_time if self.events else 0,
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> RelayObject:
-        return cls(
-            relay_number=data.get("relay_number", 0),
-            enabled=data.get("enabled", True),
-            start_time=data.get("start_time", 0),
-            stop_time=data.get("stop_time", 0),
-        )
+    def from_dict(cls, data: dict) -> "RelayObject":
+        relay_number = data.get("relay_number", 0)
+        if "events" in data:
+            events = [RelayEvent.from_dict(e) for e in data["events"]]
+        else:
+            events = [RelayEvent(
+                start_time=data.get("start_time", 0),
+                stop_time=data.get("stop_time", 0),
+                enabled=data.get("enabled", True),
+                oscillate=False,
+                osc_period_ms=1000,
+            )]
+        return cls(relay_number=relay_number, events=events)
 
 
 @dataclass
@@ -81,7 +167,7 @@ class RelayConfiguration:
         Build a fresh configuration for the given board/channel selection.
         """
         relays = [
-            RelayObject(relay_number=i)
+            RelayObject(relay_number=i, events=[RelayEvent(start_time=0, stop_time=0, enabled=True, oscillate=False, osc_period_ms=1000)])
             for i in range(channel_count)
         ]
         return RelayConfiguration(

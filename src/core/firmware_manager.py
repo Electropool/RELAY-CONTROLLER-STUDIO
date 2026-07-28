@@ -14,7 +14,7 @@ from typing import List
 
 from core.constants import BOARD_FIRMWARE_FOLDER, FIRMWARE_DIR, firmware_folder_name
 from core.logger import get_logger
-from core.models import RelayConfiguration, RelayObject
+from core.models import RelayConfiguration, RelayObject, RelayEvent
 
 logger = get_logger()
 
@@ -44,9 +44,10 @@ class FirmwareCatalog:
 
         found = []
         for entry in sorted(board_path.iterdir()):
-            if entry.is_dir() and entry.name.endswith("CH"):
+            if entry.is_dir() and entry.name.startswith("RelayController_") and entry.name.endswith("CH"):
                 try:
-                    count = int(entry.name.replace("CH", ""))
+                    count_str = entry.name.replace("RelayController_", "").replace("CH", "")
+                    count = int(count_str)
                     found.append(count)
                 except ValueError:
                     continue
@@ -55,11 +56,11 @@ class FirmwareCatalog:
     def sketch_path(self, board: str, channel_count: int) -> Path:
         """
         Return the expected path to the .ino sketch for a given board and
-        channel count, e.g. firmware/UNO/4CH/RelayController_4CH.ino
+        channel count, e.g. firmware/UNO/RelayController_4CH/RelayController_4CH.ino
         """
         board_folder = BOARD_FIRMWARE_FOLDER.get(board, "")
         folder = firmware_folder_name(channel_count)
-        sketch_name = f"RelayController_{folder}.ino"
+        sketch_name = f"{folder}.ino"
         return self._root / board_folder / folder / sketch_name
 
     def sketch_exists(self, board: str, channel_count: int) -> bool:
@@ -119,17 +120,40 @@ class FirmwareConfigurator:
             )
 
             # Replace Relay Timings
-            start_times = ", ".join(str(r.start_time) for r in profile.relay_list)
-            stop_times = ", ".join(str(r.stop_time) for r in profile.relay_list)
-
+            max_events = max(len(r.events) for r in profile.relay_list) if profile.relay_list else 1
+            if max_events < 1:
+                max_events = 1
+                
             content = re.sub(
-                r"(unsigned\s+long\s+RelayStartTime\[[^\]]*\]\s*=\s*\{)[^\}]*(\};)",
-                rf"\g<1>{start_times}\g<2>",
+                r"(const\s+uint8_t\s+MAX_EVENTS_PER_RELAY\s*=\s*)\d+(\s*;)",
+                rf"\g<1>{max_events}\g<2>",
                 content
             )
+
+            # Generate the C++ array initializer
+            relay_rows = []
+            for r in profile.relay_list:
+                event_strings = []
+                for e_idx in range(max_events):
+                    if e_idx < len(r.events):
+                        e = r.events[e_idx]
+                        start = e.start_time if e.enabled else 0
+                        stop = e.stop_time if e.enabled else 0
+                        osc = "true" if e.oscillate else "false"
+                        period = e.osc_period_ms
+                    else:
+                        start = 0
+                        stop = 0
+                        osc = "false"
+                        period = 1000
+                    event_strings.append(f"{{{start}, {stop}, {osc}, {period}}}")
+                relay_rows.append(f"  {{ {', '.join(event_strings)} }}")
+            
+            array_initializer = "{\n" + ",\n".join(relay_rows) + "\n}"
+            
             content = re.sub(
-                r"(unsigned\s+long\s+RelayStopTime\[[^\]]*\]\s*=\s*\{)[^\}]*(\};)",
-                rf"\g<1>{stop_times}\g<2>",
+                r"(RelayEvent\s+relayEvents\[[^\]]*\]\[[^\]]*\]\s*=\s*)\{[\s\S]*?\};",
+                rf"\g<1>{array_initializer};",
                 content
             )
 
@@ -164,22 +188,32 @@ class FirmwareConfigurator:
             countdown_enable = (m_count.group(1) == "true") if m_count else True
 
             # Parse arrays
-            m_start = re.search(r"RelayStartTime\[[^\]]*\]\s*=\s*\{([^\}]*)\}", content)
-            m_stop = re.search(r"RelayStopTime\[[^\]]*\]\s*=\s*\{([^\}]*)\}", content)
-
-            start_vals = []
-            if m_start:
-                start_vals = [int(x.strip()) for x in m_start.group(1).split(",") if x.strip()]
-            stop_vals = []
-            if m_stop:
-                stop_vals = [int(x.strip()) for x in m_stop.group(1).split(",") if x.strip()]
-
+            m_events = re.search(r"relayEvents\[[^\]]*\]\[[^\]]*\]\s*=\s*\{([\s\S]*?)\};", content)
             relays = []
-            for i in range(channel_count):
-                start = start_vals[i] if i < len(start_vals) else 0
-                stop = stop_vals[i] if i < len(stop_vals) else 0
-                enabled = not (start == 0 and stop == 0)
-                relays.append(RelayObject(relay_number=i, enabled=enabled, start_time=start, stop_time=stop))
+            if m_events:
+                raw_array = m_events.group(1).strip()
+                # Find each relay row: { {start, stop, osc, period}, {start, stop, osc, period} }
+                relay_rows = re.findall(r"\{\s*((?:\{[^\}]*\}\s*,?\s*)+)\}", raw_array)
+                for r_idx in range(channel_count):
+                    events = []
+                    if r_idx < len(relay_rows):
+                        r_str = relay_rows[r_idx]
+                        event_matches = re.findall(r"\{\s*(\d+)\s*,\s*(\d+)\s*,\s*(true|false)\s*,\s*(\d+)\s*\}", r_str)
+                        for start_s, stop_s, osc_s, period_ms in event_matches:
+                            start = int(start_s)
+                            stop = int(stop_s)
+                            osc = (osc_s == "true")
+                            period = int(period_ms)
+                            enabled = not (start == 0 and stop == 0)
+                            events.append(RelayEvent(start_time=start, stop_time=stop, enabled=enabled, oscillate=osc, osc_period_ms=period))
+                    
+                    if not events:
+                        events = [RelayEvent(start_time=0, stop_time=0, enabled=True, oscillate=False, osc_period_ms=1000)]
+                    relays.append(RelayObject(relay_number=r_idx, events=events))
+            else:
+                # Fallback if no relayEvents block is found
+                for r_idx in range(channel_count):
+                    relays.append(RelayObject(relay_number=r_idx, events=[RelayEvent(start_time=0, stop_time=0, enabled=True, oscillate=False, osc_period_ms=1000)]))
 
             config = RelayConfiguration(
                 board_type=board,

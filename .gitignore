@@ -1,24 +1,40 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 .venv/
+venv/
+
+# Build
 build/dist/
 build/work/
+dist/
 *.spec
-logs/*.log
 
-# Runtime-generated files (should not be committed)
+# Logs
+logs/
+*.log
+
+# Runtime-generated files
 config/crash_recovery.json
 config/user_settings.json
 
-# Arduino CLI tools (downloaded at runtime by startup wizard)
+# Arduino CLI tools (downloaded automatically)
 tools/Arduino/
 tools/Arduino15/
 tools/arduino-cli.exe
 tools/arduino-cli.yaml
 
-# IDE / OS artifacts
+# Testing
 .pytest_cache/
+
+# IDE
 .idea/
 .vscode/
 *.egg-info/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store

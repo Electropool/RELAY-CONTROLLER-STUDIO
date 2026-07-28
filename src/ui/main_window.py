@@ -338,13 +338,17 @@ class MainWindow(QMainWindow):
                 self.firmware_panel.set_field_error(error.field, error.message)
             elif error.field.startswith("relay_"):
                 parts = error.field.split("_")
-                if len(parts) == 3:
-                    try:
-                        row = int(parts[1])
+                try:
+                    row = int(parts[1])
+                    if len(parts) == 4:
+                        event_idx = int(parts[2])
+                        field_type = parts[3]
+                        self.relay_table.set_field_error(row, event_idx, field_type, error.message)
+                    elif len(parts) == 3:
                         field_type = parts[2]
-                        self.relay_table.set_field_error(row, field_type, error.message)
-                    except ValueError:
-                        pass
+                        self.relay_table.set_field_error(row, 0, field_type, error.message)
+                except ValueError:
+                    pass
         self._update_status_bar(result.is_valid)
 
     def _update_status_bar(self, is_valid: bool = True) -> None:
